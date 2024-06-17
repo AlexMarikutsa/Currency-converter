@@ -10,6 +10,11 @@ android {
     namespace = "com.currencyexchanger"
     compileSdk = 34
 
+    buildFeatures {
+        buildConfig = true
+        compose = true
+    }
+
     defaultConfig {
         applicationId = "com.currencyexchanger"
         minSdk = 29
@@ -21,6 +26,11 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        buildConfigField(
+            "String",
+            "BASE_URL",
+            "\"https://developers.paysera.com/tasks/api/\""
+        )
     }
 
     buildTypes {
@@ -82,5 +92,13 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.runtime.compose)
+
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+
+    platform(libs.okhttp.bom)
+    implementation(libs.okhttp.okhttp)
+    implementation(libs.okhttp.loggin.interceptor)
+    implementation(libs.gson)
 
 }
