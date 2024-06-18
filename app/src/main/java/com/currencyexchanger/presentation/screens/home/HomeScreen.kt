@@ -80,7 +80,7 @@ private fun HomeScreenContent(screenState: ScreenState) {
 @Composable
 private fun MyBalancesSection(myBalances: List<CurrencyBalanceDvo>) {
     Text(
-        modifier = Modifier.padding(8.dp),
+        modifier = Modifier.padding(8.dp).fillMaxWidth(),
         text = stringResource(id = R.string.my_balances).uppercase(),
         fontSize = 20.sp,
         color = Color.Black.copy(alpha = 0.5f)
@@ -108,7 +108,7 @@ private fun MyBalancesSection(myBalances: List<CurrencyBalanceDvo>) {
 @Composable
 private fun CurrencyExchangeSection(currencyExchange: CurrencyExchangeDvo) {
     Text(
-        modifier = Modifier.padding(8.dp),
+        modifier = Modifier.padding(8.dp).fillMaxWidth(),
         text = stringResource(id = R.string.currency_exchange).uppercase(),
         fontSize = 20.sp,
         color = Color.Black.copy(alpha = 0.5f)
