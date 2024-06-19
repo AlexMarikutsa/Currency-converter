@@ -13,4 +13,5 @@ sealed interface UiState {
         val selectedIndex: Int,
         val currencies: Set<String>
     ) : UiState
+    data class CurrencyConverted(val message: String) : UiState
 }

@@ -20,8 +20,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -83,38 +85,63 @@ private fun HomeScreenContent(
                     Button(
                         modifier = Modifier.fillMaxWidth(fraction = 0.8f),
                         onClick = {
-
+                            onEvent(Event.OnSubmit)
                         }
                     ) {
                         Text(text = stringResource(id = R.string.submit))
                     }
                 }
+                UiStateSection(uiState = uiState, onEvent = onEvent)
+                            }
+        }
+    }
+}
 
-                when (uiState) {
-                    UiState.Default -> Unit
-                    is UiState.InputAmountForSale -> InputAmountDialog(
-                        defaultAmount = uiState.amount,
-                        onConfirm = { onEvent(Event.OnAmountForSaleEntered(it)) },
-                        onDismissRequest = { onEvent(Event.OnCloseDialog) }
-                    )
-                    UiState.Loading -> TODO()
-                    is UiState.SelectCurrencyForSale -> CurrencyDropdownList(
-                        modifier = Modifier,
-                        selectedIndex = uiState.selectedIndex,
-                        currencies = uiState.currencies,
-                        onCurrencySelected = { onEvent(Event.OnCurrencyForSaleSelected(currency = it)) },
-                        onDismissRequest = { onEvent(Event.OnCloseDialog) }
-                    )
-                    is UiState.SelectCurrencyForReceive -> CurrencyDropdownList(
-                        modifier = Modifier,
-                        selectedIndex = uiState.selectedIndex,
-                        currencies = uiState.currencies,
-                        onCurrencySelected = { onEvent(Event.OnCurrencyForReceiveSelected(currency = it)) },
-                        onDismissRequest = { onEvent(Event.OnCloseDialog) }
-                    )
+@Composable
+private fun UiStateSection(uiState: UiState, onEvent: (Event) -> Unit) {
+    when (uiState) {
+        UiState.Default -> Unit
+        is UiState.InputAmountForSale -> InputAmountDialog(
+            defaultAmount = uiState.amount,
+            onConfirm = { onEvent(Event.OnAmountForSaleEntered(it)) },
+            onDismissRequest = { onEvent(Event.OnCloseDialog) }
+        )
+        UiState.Loading -> Unit
+        is UiState.SelectCurrencyForSale -> CurrencyDropdownList(
+            modifier = Modifier,
+            selectedIndex = uiState.selectedIndex,
+            currencies = uiState.currencies,
+            onCurrencySelected = { onEvent(Event.OnCurrencyForSaleSelected(currency = it)) },
+            onDismissRequest = { onEvent(Event.OnCloseDialog) }
+        )
+        is UiState.SelectCurrencyForReceive -> CurrencyDropdownList(
+            modifier = Modifier,
+            selectedIndex = uiState.selectedIndex,
+            currencies = uiState.currencies,
+            onCurrencySelected = { onEvent(Event.OnCurrencyForReceiveSelected(currency = it)) },
+            onDismissRequest = { onEvent(Event.OnCloseDialog) }
+        )
+
+        is UiState.CurrencyConverted -> AlertDialog(
+            title = {
+                Text(text = stringResource(id = R.string.currency_converted_dialog_title))
+            },
+            text = {
+                Text(text = uiState.message)
+            },
+            onDismissRequest = {
+                onEvent(Event.OnCloseDialog)
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onEvent(Event.OnCloseDialog)
+                    }
+                ) {
+                    Text(text = stringResource(id = R.string.done))
                 }
             }
-        }
+        )
     }
 }
 

@@ -11,4 +11,5 @@ sealed interface Event {
     ) : Event
     data class OnCurrencyForSaleSelected(val currency: String) : Event
     data class OnCurrencyForReceiveSelected(val currency: String) : Event
+    data object OnSubmit : Event
 }

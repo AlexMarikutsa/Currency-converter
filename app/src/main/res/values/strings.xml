@@ -9,4 +9,7 @@
     <string name="enter_amount">Enter amount</string>
     <string name="confirm">Confirm</string>
     <string name="cancel">Cancel</string>
+    <string name="currency_converted_dialog_title">Currency converted</string>
+    <string name="currency_converted_dialog_message">You have converted %1$s %2$s to %3$s %4$s. Commission Fee: %5$s %6$s.</string>
+    <string name="done">Done</string>
 </resources>

@@ -1,7 +1,10 @@
 package com.currencyexchanger.presentation.screens.home
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import android.content.Context
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.currencyexchanger.R
 import com.currencyexchanger.presentation.screens.home.dvo.CurrencyBalanceDvo
 import com.currencyexchanger.presentation.screens.home.dvo.CurrencyExchangeDvo
 import com.currencyexchanger.presentation.screens.home.event.Event
@@ -13,6 +16,7 @@ import com.domain.exchange_strategies.FirstFiveCurrencyExchangesFreeStrategy
 import com.domain.models.dto.CurrencyExchangeRatesDto
 import com.domain.use_case.GetCurrencyExchangeRatesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,8 +29,10 @@ import javax.inject.Inject
 
 @HiltViewModel
 class HomeScreenViewModel @Inject constructor(
+    @ApplicationContext
+    context: Context,
     private val getCurrencyExchangeRatesUseCase: GetCurrencyExchangeRatesUseCase
-) : ViewModel() {
+) : AndroidViewModel(context as Application) {
 
     private var successfulExchanges = 0
 
@@ -89,7 +95,10 @@ class HomeScreenViewModel @Inject constructor(
 
     private fun prepareMyBalances(): List<CurrencyBalanceDvo> {
         return userAvailableBalances.map {
-            CurrencyBalanceDvo(balance = it.value.toCurrency(), currency = it.key)
+            CurrencyBalanceDvo(
+                balance = it.value.toCurrency(),
+                currency = it.key
+            )
         }
     }
 
@@ -120,6 +129,58 @@ class HomeScreenViewModel @Inject constructor(
             is Event.OnAmountForSaleEntered -> processAmountForSaleEntered(amount = event.amount)
             is Event.OnCurrencyForSaleSelected -> currencyForSaleChanged(currency = event.currency)
             is Event.OnCurrencyForReceiveSelected -> currencyForReceiveChanged(currency = event.currency)
+            Event.OnSubmit -> submit()
+        }
+    }
+
+    private fun submit() {
+        if (formData.forSale > 0.0 && formData.receive > 0.0) {
+            exchangeCurrency()
+            currencySuccessfullyExchanged()
+            ++successfulExchanges
+            resetForm()
+            updateScreenState()
+        }
+    }
+
+    private fun currencySuccessfullyExchanged() {
+        _uiState.update {
+            UiState.CurrencyConverted(
+                message = getApplication<Application>().getString(
+                    R.string.currency_converted_dialog_message,
+                    formData.forSale.toCurrency(),
+                    formData.currencyForSale,
+                    formData.receive.toCurrency(),
+                    formData.currencyForReceive,
+                    formData.fee.toCurrency(),
+                    formData.currencyForSale
+                )
+            )
+        }
+    }
+
+    private fun exchangeCurrency() {
+        if (userAvailableBalances.containsKey(formData.currencyForReceive)) {
+            userAvailableBalances[formData.currencyForReceive] =
+                userAvailableBalances[formData.currencyForReceive]?.let { it + formData.receive } ?: formData.receive
+        } else {
+            userAvailableBalances[formData.currencyForReceive] = formData.receive
+        }
+
+        userAvailableBalances[formData.currencyForSale]?.let {
+            userAvailableBalances[formData.currencyForSale] = if (it - formData.forSale >= 0) {
+                it - formData.forSale
+            } else {
+                0.0
+            }
+        }
+    }
+
+    private fun resetForm() {
+        formData.apply {
+            forSale = 0.0
+            receive = 0.0
+            fee = 0.0
         }
     }
 
@@ -175,10 +236,8 @@ class HomeScreenViewModel @Inject constructor(
     }
 
     private fun calculateCurrencyExchange(feeCalculationStrategy: FeeCalculationStrategy) {
-        val exchangedAmountWithoutFee = prepareAmountForReceive()
-        val fee = feeCalculationStrategy.calculateFee(exchangedAmountWithoutFee)
-        val exchangedAmountMinusFee = exchangedAmountWithoutFee - fee
-        formData.receive = exchangedAmountMinusFee
+        formData.fee = feeCalculationStrategy.calculateFee(formData.forSale)
+        formData.receive = prepareAmountForReceive()
     }
 
     private fun prepareFeeStrategy(): FeeCalculationStrategy {
@@ -197,7 +256,7 @@ class HomeScreenViewModel @Inject constructor(
 
     private fun prepareAmountForReceive(): Double {
         val rate = currentCurrencyExchangeRates[formData.currencyForSale]?.get(formData.currencyForReceive) ?: 0.0
-        return formData.forSale * rate
+        return (formData.forSale - formData.fee) * rate
     }
 
     private fun resetUiState() {
