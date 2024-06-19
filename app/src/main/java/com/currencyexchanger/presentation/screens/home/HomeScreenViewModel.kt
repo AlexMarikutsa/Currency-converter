@@ -113,40 +113,79 @@ class HomeScreenViewModel @Inject constructor(
     fun onEvent(event: Event) {
         if (_uiState.replayCache.firstOrNull() == UiState.Loading) return
         when (event) {
-            Event.OnEnterAmountForSail -> _uiState.update { UiState.InputAmountForSale(amount = formData.forSale) }
-            Event.OnChooseCurrencyForSail -> TODO()
-            Event.OnChooseCurrencyForReceive -> TODO()
+            Event.OnEnterAmountForSale -> _uiState.update { UiState.InputAmountForSale(amount = formData.forSale) }
+            Event.OnChooseCurrencyForSale -> processOnChooseCurrencyForSaleSelected()
+            Event.OnChooseCurrencyForReceive -> processOnChooseCurrencyForReceiveSelected()
             Event.OnCloseDialog -> resetUiState()
-            is Event.OnAmountForSailedEntered -> processAmountForSailedEntered(amount = event.amount)
+            is Event.OnAmountForSaleEntered -> processAmountForSaleEntered(amount = event.amount)
+            is Event.OnCurrencyForSaleSelected -> currencyForSaleChanged(currency = event.currency)
+            is Event.OnCurrencyForReceiveSelected -> currencyForReceiveChanged(currency = event.currency)
         }
     }
 
-    private fun processAmountForSailedEntered(amount: Double) {
+    private fun processOnChooseCurrencyForSaleSelected() {
+        val currenciesForReceive = userAvailableBalances.keys
+        _uiState.update {
+            UiState.SelectCurrencyForSale(
+                selectedIndex = currenciesForReceive.indexOf(formData.currencyForSale),
+                currencies = currenciesForReceive
+            )
+        }
+    }
+
+    private fun currencyForReceiveChanged(currency: String) {
         resetUiState()
-        calculateCurrencyExchange(amount = amount, feeCalculationStrategy = FirstFiveCurrencyExchangesFreeStrategy(currencyExchangeNumber = successfulExchanges))
+        formData.currencyForReceive = currency
+        calculateCurrencyExchange(feeCalculationStrategy = prepareFeeStrategy())
+        updateScreenState()
+    }
+
+    private fun processOnChooseCurrencyForReceiveSelected() {
+        val currenciesForReceive = currentCurrencyExchangeRates[formData.currencyForSale]?.keys ?: return
+        _uiState.update {
+            UiState.SelectCurrencyForReceive(
+                selectedIndex = currenciesForReceive.indexOf(formData.currencyForReceive),
+                currencies = currenciesForReceive
+            )
+        }
+    }
+
+    private fun currencyForSaleChanged(currency: String) {
+        resetUiState()
+        formData.currencyForSale = currency
+        calculateCurrencyExchange(feeCalculationStrategy = prepareFeeStrategy())
+        updateScreenState()
+    }
+
+    private fun processAmountForSaleEntered(amount: Double) {
+        resetUiState()
+        calculateCurrencyExchange(amount = amount)
     }
 
     private fun calculateCurrencyExchange(
-        amount: Double,
-        feeCalculationStrategy: FeeCalculationStrategy
+        amount: Double
     ) {
-        val amountForSale = checkAndPrepareAmountForSail(
+        val amountForSale = checkAndPrepareAmountForSale(
             amount = amount
         )
         formData.forSale = amountForSale
 
-        val exchangedAmountWithoutFee = prepareAmountForReceive(amount = amountForSale)
-
-        val fee = feeCalculationStrategy.calculateFee(exchangedAmountWithoutFee)
-
-        val exchangedAmountMinusFee = exchangedAmountWithoutFee - fee
-
-        formData.receive = exchangedAmountMinusFee
-
+        calculateCurrencyExchange(feeCalculationStrategy = prepareFeeStrategy())
         updateScreenState()
     }
 
-    private fun checkAndPrepareAmountForSail(amount: Double): Double {
+    private fun calculateCurrencyExchange(feeCalculationStrategy: FeeCalculationStrategy) {
+        val exchangedAmountWithoutFee = prepareAmountForReceive()
+        val fee = feeCalculationStrategy.calculateFee(exchangedAmountWithoutFee)
+        val exchangedAmountMinusFee = exchangedAmountWithoutFee - fee
+        formData.receive = exchangedAmountMinusFee
+    }
+
+    private fun prepareFeeStrategy(): FeeCalculationStrategy {
+        return FirstFiveCurrencyExchangesFreeStrategy(currencyExchangeNumber = successfulExchanges)
+    }
+
+    private fun checkAndPrepareAmountForSale(amount: Double): Double {
         val availableBalanceForSelectedCurrency = userAvailableBalances[formData.currencyForSale] ?: 0.0
 
         return when {
@@ -156,9 +195,9 @@ class HomeScreenViewModel @Inject constructor(
         }
     }
 
-    private fun prepareAmountForReceive(amount: Double): Double {
-        val rate = currentCurrencyExchangeRates[formData.currencyForSale]!![formData.currencyForReceive]!!
-        return amount * rate
+    private fun prepareAmountForReceive(): Double {
+        val rate = currentCurrencyExchangeRates[formData.currencyForSale]?.get(formData.currencyForReceive) ?: 0.0
+        return formData.forSale * rate
     }
 
     private fun resetUiState() {

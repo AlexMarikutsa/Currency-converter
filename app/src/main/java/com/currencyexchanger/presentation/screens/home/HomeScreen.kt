@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.currencyexchanger.R
+import com.currencyexchanger.presentation.components.CurrencyDropdownList
 import com.currencyexchanger.presentation.components.InputAmountDialog
 import com.currencyexchanger.presentation.screens.home.dvo.CurrencyBalanceDvo
 import com.currencyexchanger.presentation.screens.home.dvo.CurrencyExchangeDvo
@@ -93,10 +94,24 @@ private fun HomeScreenContent(
                     UiState.Default -> Unit
                     is UiState.InputAmountForSale -> InputAmountDialog(
                         defaultAmount = uiState.amount,
-                        onConfirm = { onEvent(Event.OnAmountForSailedEntered(it)) },
+                        onConfirm = { onEvent(Event.OnAmountForSaleEntered(it)) },
                         onDismissRequest = { onEvent(Event.OnCloseDialog) }
                     )
                     UiState.Loading -> TODO()
+                    is UiState.SelectCurrencyForSale -> CurrencyDropdownList(
+                        modifier = Modifier,
+                        selectedIndex = uiState.selectedIndex,
+                        currencies = uiState.currencies,
+                        onCurrencySelected = { onEvent(Event.OnCurrencyForSaleSelected(currency = it)) },
+                        onDismissRequest = { onEvent(Event.OnCloseDialog) }
+                    )
+                    is UiState.SelectCurrencyForReceive -> CurrencyDropdownList(
+                        modifier = Modifier,
+                        selectedIndex = uiState.selectedIndex,
+                        currencies = uiState.currencies,
+                        onCurrencySelected = { onEvent(Event.OnCurrencyForReceiveSelected(currency = it)) },
+                        onDismissRequest = { onEvent(Event.OnCloseDialog) }
+                    )
                 }
             }
         }
@@ -149,8 +164,8 @@ private fun CurrencyExchangeSection(
     CurrencyExchangeItem(
         currencyExchangeType = CurrencyExchangeType.Sell,
         currencyBalance = currencyExchange.sell,
-        onNumberClicked = { onEvent(Event.OnEnterAmountForSail) },
-        onCurrencyClicked = { onEvent(Event.OnChooseCurrencyForSail) }
+        onNumberClicked = { onEvent(Event.OnEnterAmountForSale) },
+        onCurrencyClicked = { onEvent(Event.OnChooseCurrencyForSale) }
     )
     Spacer(
         modifier = Modifier
