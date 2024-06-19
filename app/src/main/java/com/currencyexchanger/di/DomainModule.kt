@@ -1,6 +1,7 @@
 package com.currencyexchanger.di
 
 import com.domain.repository.CurrencyExchangeRepository
+import com.domain.use_case.CalculateCurrencyExchangeUseCase
 import com.domain.use_case.GetCurrencyExchangeRatesUseCase
 import dagger.Module
 import dagger.Provides
@@ -16,5 +17,10 @@ class DomainModule {
         return GetCurrencyExchangeRatesUseCase(
             currencyExchangeRepository = currencyExchangeRepository
         )
+    }
+
+    @Provides
+    fun provideCalculateCurrencyExchangeUseCase(): CalculateCurrencyExchangeUseCase {
+        return CalculateCurrencyExchangeUseCase()
     }
 }

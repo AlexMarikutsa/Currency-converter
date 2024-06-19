@@ -14,6 +14,7 @@ import com.domain.ResultState
 import com.domain.exchange_strategies.FeeCalculationStrategy
 import com.domain.exchange_strategies.FirstFiveCurrencyExchangesFreeStrategy
 import com.domain.models.dto.CurrencyExchangeRatesDto
+import com.domain.use_case.CalculateCurrencyExchangeUseCase
 import com.domain.use_case.GetCurrencyExchangeRatesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -31,7 +32,8 @@ import javax.inject.Inject
 class HomeScreenViewModel @Inject constructor(
     @ApplicationContext
     context: Context,
-    private val getCurrencyExchangeRatesUseCase: GetCurrencyExchangeRatesUseCase
+    private val getCurrencyExchangeRatesUseCase: GetCurrencyExchangeRatesUseCase,
+    private val calculateCurrencyExchangeUseCase: CalculateCurrencyExchangeUseCase
 ) : AndroidViewModel(context as Application) {
 
     private var successfulExchanges = 0
@@ -197,7 +199,7 @@ class HomeScreenViewModel @Inject constructor(
     private fun currencyForReceiveChanged(currency: String) {
         resetUiState()
         formData.currencyForReceive = currency
-        calculateCurrencyExchange(feeCalculationStrategy = prepareFeeStrategy())
+        calculateCurrencyExchange()
         updateScreenState()
     }
 
@@ -214,7 +216,7 @@ class HomeScreenViewModel @Inject constructor(
     private fun currencyForSaleChanged(currency: String) {
         resetUiState()
         formData.currencyForSale = currency
-        calculateCurrencyExchange(feeCalculationStrategy = prepareFeeStrategy())
+        calculateCurrencyExchange()
         updateScreenState()
     }
 
@@ -231,13 +233,19 @@ class HomeScreenViewModel @Inject constructor(
         )
         formData.forSale = amountForSale
 
-        calculateCurrencyExchange(feeCalculationStrategy = prepareFeeStrategy())
+        calculateCurrencyExchange()
         updateScreenState()
     }
 
-    private fun calculateCurrencyExchange(feeCalculationStrategy: FeeCalculationStrategy) {
-        formData.fee = feeCalculationStrategy.calculateFee(formData.forSale)
-        formData.receive = prepareAmountForReceive()
+    private fun calculateCurrencyExchange() {
+        val rate = currentCurrencyExchangeRates[formData.currencyForSale]?.get(formData.currencyForReceive) ?: 0.0
+        val calculationResult = calculateCurrencyExchangeUseCase(
+            feeCalculationStrategy = prepareFeeStrategy(),
+            rate = rate,
+            forSale = formData.forSale
+        )
+        formData.fee = calculationResult.fee
+        formData.receive = calculationResult.result
     }
 
     private fun prepareFeeStrategy(): FeeCalculationStrategy {
@@ -252,11 +260,6 @@ class HomeScreenViewModel @Inject constructor(
             availableBalanceForSelectedCurrency > 0.0 -> availableBalanceForSelectedCurrency
             else -> 0.0
         }
-    }
-
-    private fun prepareAmountForReceive(): Double {
-        val rate = currentCurrencyExchangeRates[formData.currencyForSale]?.get(formData.currencyForReceive) ?: 0.0
-        return (formData.forSale - formData.fee) * rate
     }
 
     private fun resetUiState() {
