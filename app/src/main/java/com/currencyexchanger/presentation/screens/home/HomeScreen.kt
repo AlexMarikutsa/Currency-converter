@@ -2,12 +2,14 @@ package com.currencyexchanger.presentation.screens.home
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -34,53 +36,79 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.currencyexchanger.R
+import com.currencyexchanger.presentation.components.InputAmountDialog
 import com.currencyexchanger.presentation.screens.home.dvo.CurrencyBalanceDvo
 import com.currencyexchanger.presentation.screens.home.dvo.CurrencyExchangeDvo
+import com.currencyexchanger.presentation.screens.home.event.Event
 import com.currencyexchanger.presentation.screens.home.state.ScreenState
+import com.currencyexchanger.presentation.screens.home.state.UiState
 
 @Composable
 fun HomeScreen(
     viewModel: HomeScreenViewModel = hiltViewModel()
 ) {
     val screenState by viewModel.screenState.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     HomeScreenContent(
-        screenState = screenState
+        uiState = uiState,
+        screenState = screenState,
+        onEvent = viewModel::onEvent
     )
 }
 
 @Composable
-private fun HomeScreenContent(screenState: ScreenState) {
+private fun HomeScreenContent(
+    uiState: UiState,
+    screenState: ScreenState,
+    onEvent: (Event) -> Unit
+) {
     when (screenState) {
         ScreenState.Initial -> Unit
         is ScreenState.Prepared -> {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                MyBalancesSection(myBalances = screenState.myBalances)
-                CurrencyExchangeSection(currencyExchange = screenState.currencyExchange)
-                Spacer(modifier = Modifier.height(60.dp))
-                Button(
-                    modifier = Modifier.fillMaxWidth(fraction = 0.8f),
-                    onClick = {
-
-                    }
+            Box(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.White),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(text = stringResource(id = R.string.submit))
+                    MyBalancesSection(myBalances = screenState.myBalances)
+                    CurrencyExchangeSection(
+                        currencyExchange = screenState.currencyExchange,
+                        onEvent = onEvent
+                    )
+                    Spacer(modifier = Modifier.height(60.dp))
+                    Button(
+                        modifier = Modifier.fillMaxWidth(fraction = 0.8f),
+                        onClick = {
+
+                        }
+                    ) {
+                        Text(text = stringResource(id = R.string.submit))
+                    }
+                }
+
+                when (uiState) {
+                    UiState.Default -> Unit
+                    is UiState.InputAmountForSale -> InputAmountDialog(
+                        defaultAmount = uiState.amount,
+                        onConfirm = { onEvent(Event.OnAmountForSailedEntered(it)) },
+                        onDismissRequest = { onEvent(Event.OnCloseDialog) }
+                    )
+                    UiState.Loading -> TODO()
                 }
             }
         }
     }
-
 }
 
 @Composable
 private fun MyBalancesSection(myBalances: List<CurrencyBalanceDvo>) {
     Text(
-        modifier = Modifier.padding(8.dp).fillMaxWidth(),
+        modifier = Modifier
+            .padding(8.dp)
+            .fillMaxWidth(),
         text = stringResource(id = R.string.my_balances).uppercase(),
         fontSize = 20.sp,
         color = Color.Black.copy(alpha = 0.5f)
@@ -106,16 +134,23 @@ private fun MyBalancesSection(myBalances: List<CurrencyBalanceDvo>) {
 }
 
 @Composable
-private fun CurrencyExchangeSection(currencyExchange: CurrencyExchangeDvo) {
+private fun CurrencyExchangeSection(
+    currencyExchange: CurrencyExchangeDvo,
+    onEvent: (Event) -> Unit
+) {
     Text(
-        modifier = Modifier.padding(8.dp).fillMaxWidth(),
+        modifier = Modifier
+            .padding(8.dp)
+            .fillMaxWidth(),
         text = stringResource(id = R.string.currency_exchange).uppercase(),
         fontSize = 20.sp,
         color = Color.Black.copy(alpha = 0.5f)
     )
     CurrencyExchangeItem(
         currencyExchangeType = CurrencyExchangeType.Sell,
-        currencyBalance = currencyExchange.sell
+        currencyBalance = currencyExchange.sell,
+        onNumberClicked = { onEvent(Event.OnEnterAmountForSail) },
+        onCurrencyClicked = { onEvent(Event.OnChooseCurrencyForSail) }
     )
     Spacer(
         modifier = Modifier
@@ -126,14 +161,17 @@ private fun CurrencyExchangeSection(currencyExchange: CurrencyExchangeDvo) {
     )
     CurrencyExchangeItem(
         currencyExchangeType = CurrencyExchangeType.Receive,
-        currencyBalance = currencyExchange.receive
+        currencyBalance = currencyExchange.receive,
+        onCurrencyClicked = { onEvent(Event.OnChooseCurrencyForReceive) }
     )
 }
 
 @Composable
 private fun CurrencyExchangeItem(
     currencyExchangeType: CurrencyExchangeType,
-    currencyBalance: CurrencyBalanceDvo
+    currencyBalance: CurrencyBalanceDvo,
+    onNumberClicked: (() -> Unit)? = null,
+    onCurrencyClicked: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -176,7 +214,11 @@ private fun CurrencyExchangeItem(
         Spacer(modifier = Modifier.weight(1f))
 
         Text(
-            modifier = Modifier.padding(8.dp),
+            modifier = Modifier
+                .padding(8.dp)
+                .clickable(currencyExchangeType == CurrencyExchangeType.Sell) {
+                    onNumberClicked?.invoke()
+                },
             text = currencyBalance.balance,
             fontSize = 16.sp,
             color = when (currencyExchangeType) {
@@ -186,14 +228,20 @@ private fun CurrencyExchangeItem(
         )
 
         Text(
-            modifier = Modifier,
+            modifier = Modifier
+                .clickable {
+                    onCurrencyClicked()
+                },
             text = currencyBalance.currency,
             fontSize = 16.sp,
             color = Color.Black
         )
 
         Image(
-            modifier = Modifier,
+            modifier = Modifier
+                .clickable {
+                    onCurrencyClicked()
+                },
             imageVector = Icons.Filled.KeyboardArrowDown,
             contentDescription = null
         )
@@ -233,7 +281,9 @@ private fun HomeScreenContent_Preview() {
                     currency = "USD"
                 )
             )
-        )
+        ),
+        onEvent = {},
+        uiState = UiState.Default
     )
 }
 
@@ -243,7 +293,9 @@ private fun CurrencyExchangeItem_Preview() {
     Box(modifier = Modifier.background(Color.White)) {
         CurrencyExchangeItem(
             currencyExchangeType = CurrencyExchangeType.Receive,
-            currencyBalance = CurrencyBalanceDvo(balance = "101.0", currency = "USD")
+            currencyBalance = CurrencyBalanceDvo(balance = "101.0", currency = "USD"),
+            onCurrencyClicked = {},
+            onNumberClicked = {}
         )
     }
 }

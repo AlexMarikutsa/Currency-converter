@@ -5,7 +5,7 @@ class FirstFiveCurrencyExchangesFreeStrategy(
 ) : FeeCalculationStrategy {
 
     override fun calculateFee(amount: Double): Double {
-        return if (currencyExchangeNumber > FREE_EXCHANGES_COUNT) {
+        return if (currencyExchangeNumber >= FREE_EXCHANGES_COUNT) {
             amount * FEE_PERCENTAGE
         } else {
             0.0

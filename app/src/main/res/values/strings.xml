@@ -6,4 +6,7 @@
     <string name="sell">Sell</string>
     <string name="receive">Receive</string>
     <string name="submit">Submit</string>
+    <string name="enter_amount">Enter amount</string>
+    <string name="confirm">Confirm</string>
+    <string name="cancel">Cancel</string>
 </resources>
